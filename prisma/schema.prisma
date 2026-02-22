@@ -1,0 +1,206 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+// ─── Core User ───────────────────────────────────────────
+
+model User {
+  id            String         @id @default(uuid())
+  discordId     String         @unique @map("discord_id")
+  username      String
+  preferences   Json           @default("{}")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  goals         Goal[]
+  tasks         Task[]
+  memories      Memory[]
+  emotionLogs   EmotionLog[]
+  financeRecords FinanceRecord[]
+  insights      Insight[]
+  eventLogs     EventLog[]
+
+  @@map("users")
+}
+
+// ─── Goals ───────────────────────────────────────────────
+
+model Goal {
+  id          String     @id @default(uuid())
+  userId      String     @map("user_id")
+  title       String
+  description String?
+  status      GoalStatus @default(ACTIVE)
+  priority    Priority   @default(MEDIUM)
+  deadline    DateTime?
+  progress    Int        @default(0) // 0-100
+  tags        String[]   @default([])
+  metadata    Json       @default("{}")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  user  User   @relation(fields: [userId], references: [id])
+  tasks Task[]
+
+  @@map("goals")
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  ABANDONED
+}
+
+// ─── Tasks ───────────────────────────────────────────────
+
+model Task {
+  id          String     @id @default(uuid())
+  userId      String     @map("user_id")
+  goalId      String?    @map("goal_id")
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?  @map("due_date")
+  completedAt DateTime?  @map("completed_at")
+  tags        String[]   @default([])
+  metadata    Json       @default("{}")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  user User  @relation(fields: [userId], references: [id])
+  goal Goal? @relation(fields: [goalId], references: [id])
+
+  @@map("tasks")
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+// ─── Memory ──────────────────────────────────────────────
+
+model Memory {
+  id        String     @id @default(uuid())
+  userId    String     @map("user_id")
+  type      MemoryType
+  content   String
+  context   String?
+  tags      String[]   @default([])
+  metadata  Json       @default("{}")
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("memories")
+}
+
+enum MemoryType {
+  DECISION
+  IDEA
+  NOTE
+  PERSON
+  INSIGHT
+}
+
+// ─── Emotion Log ─────────────────────────────────────────
+
+model EmotionLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  mood      String
+  intensity Int      // 1-10
+  context   String?
+  triggers  String[] @default([])
+  tags      String[] @default([])
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("emotion_logs")
+}
+
+// ─── Finance ─────────────────────────────────────────────
+
+model FinanceRecord {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  type        FinanceType
+  amount      Float
+  currency    String      @default("BRL")
+  category    String
+  description String?
+  date        DateTime    @default(now())
+  tags        String[]    @default([])
+  metadata    Json        @default("{}")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("finance_records")
+}
+
+enum FinanceType {
+  INCOME
+  EXPENSE
+}
+
+// ─── Insights ────────────────────────────────────────────
+
+model Insight {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  type        InsightType
+  title       String
+  content     String
+  modules     String[]    @default([]) // which modules contributed
+  confidence  Float       @default(0.5) // 0-1
+  acknowledged Boolean    @default(false)
+  metadata    Json        @default("{}")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("insights")
+}
+
+enum InsightType {
+  PATTERN
+  CORRELATION
+  ALERT
+  SUGGESTION
+}
+
+// ─── Event Log ───────────────────────────────────────────
+
+model EventLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  module    String
+  action    String
+  payload   Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("event_logs")
+}
+
+// ─── Shared Enums ────────────────────────────────────────
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
